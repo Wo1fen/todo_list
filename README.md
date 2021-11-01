@@ -1,3 +1,3 @@
 # todo_list
-Новая ветка "Неделя 1"
-Созданы классы, тестовый вывод объектов
+New thread "Week 1"
+Classes created, test output of objects
