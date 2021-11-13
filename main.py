@@ -1,4 +1,4 @@
-from auth import JWT_SECRET, JWT_ALGORITHM, JWT_EXP_DELTA_SECONDS
+from config import JWT_SECRET, JWT_ALGORITHM, JWT_EXP_DELTA_SECONDS
 from db import Database
 
 from datetime import datetime, timedelta
@@ -34,6 +34,33 @@ async def auth_middleware(app, handler):
     return middleware
 
 
+@router.post("/api/register")
+async def register(request: web.Request):
+    register_info = await request.json()
+    username = register_info['username']
+    email = register_info['email']
+    password = register_info['password']
+
+    await database.add_user(username, email, password)   # медот еще не реализован
+
+    return web.json_response({})
+
+
+@router.post("/api/login")
+async def login(request: web.Request):
+    login_info = await request.json()
+
+    user = await database.fetch_user(email=login_info["email"])
+    # User auth login here
+
+    payload = {
+        'user_id': user.id,
+        'exp': datetime.utcnow() + timedelta(seconds=JWT_EXP_DELTA_SECONDS)
+    }
+    jwt_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return web.json_response({'token': jwt_token})
+
+
 @router.get("/")
 async def root(request: web.Request) -> web.Response:
     return web.json_response({
@@ -41,30 +68,33 @@ async def root(request: web.Request) -> web.Response:
     })
 
 
-@router.get("/api/tasks")
 @login_required
+@router.get("/api/tasks")
 async def api_tasks(request: web.Request) -> web.Response:
-    tasks = await database.fetch_tasks_by_user()
+    user_id = request.user.id
+    tasks = await database.fetch_tasks(user_id)
     return web.json_response({
         "status": "ok",
         "data": tasks
     })
 
 
+@login_required
 @router.post("/api/tasks")
 async def api_new_task(request: web.Request) -> web.Response:
     task = await request.json()
 
+    user_id = request.user.id
     task_name = task["name"]
     task_desc = task["description"]
     deadline = task["deadline"]
-    user_id = 1
 
-    await database.add_new_task(task_name, task_desc, deadline, user_id)
+    await database.add_new_task(user_id, task_name=task_name, desc=task_desc, deadline=deadline)
 
     return web.json_response({
-        "status": "ok",
-    })
+        "message": "Task was successfully added!",
+    },
+        status=200)
 
 
 # @router.patch("/api/tasks/{task_id}")
@@ -95,26 +125,6 @@ async def api_delete_task(request: web.Request) -> web.Response:
     return web.json_response({
         "status": "ok",
     })
-
-
-@router.get("/api/login")
-async def login(request: web.Request):
-    login_info = await request.json()
-
-    user = await database.fetch_user(email=login_info["email"])
-    # User auth login here
-
-    payload = {
-        'user_id': user.id,
-        'exp': datetime.utcnow() + timedelta(seconds=JWT_EXP_DELTA_SECONDS)
-    }
-    jwt_token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    return web.json_response({'token': jwt_token})
-
-
-@router.get("/api/user")
-async def get_user(request):
-    return web.json_response({'user': str(request.user)})
 
 
 async def init_app() -> web.Application:
