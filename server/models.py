@@ -17,9 +17,6 @@ class User(Base):
     password = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
 
-    def match_password(self, password):
-        pass
-
     def __repr__(self):
         return f'User(id={self.id}, username={self.username}, password={self.password}, email={self.email})'
 

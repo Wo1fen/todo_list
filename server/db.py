@@ -120,4 +120,20 @@ class Database:
             await session.commit()
         await self.engine.dispose()
 
+    async def update_task(self, user_id, task_id, new_task_name=None, new_desc=None, new_deadline=None):
+        async with self.async_session() as session:
+            stmt = (
+                update(Task).
+                where(Task.user_id == user_id, Task.id == task_id).
+                values(
+                    name=new_task_name,
+                    description=new_desc,
+                    deadline=datetime.fromisoformat(new_deadline)
+                )
+            )
+            await session.execute(stmt)
+
+            await session.commit()
+        await self.engine.dispose()
+
 

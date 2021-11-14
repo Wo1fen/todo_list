@@ -72,7 +72,11 @@ async def login(request: web.Request):
         'exp': datetime.utcnow() + timedelta(seconds=config.JWT_EXP_DELTA_SECONDS)
     }
     jwt_token = jwt.encode(payload, config.JWT_SECRET, algorithm=config.JWT_ALGORITHM)
-    return web.json_response({'token': jwt_token})
+    return web.json_response({
+        'message': 'You are Successfully logged in!',
+        'token': jwt_token
+    },
+        status=200)
 
 
 @login_required
@@ -81,9 +85,9 @@ async def api_tasks(request: web.Request) -> web.Response:
     user_id = request.user.id
     tasks = await database.fetch_tasks_list(user_id)
     return web.json_response({
-        "status": "ok",
+        "message": "success",
         "data": tasks
-    })
+    }, status=200)
 
 
 @login_required
@@ -117,25 +121,19 @@ async def api_delete_task(request: web.Request) -> web.Response:
     }, status=200)
 
 
-# @router.patch("/api/tasks/{task_id}")
-# async def api_new_task(request: web.Request) -> web.Response:
-#     task_id = request.match_info["task_id"]
-#     task = await request.json()
-#
-#     fields = {}
-#     if "name" in task:
-#         fields["name"] = task["name"]
-#     if "description" in task:
-#         fields["description"] = task["description"]
-#     if "deadline" in task:
-#         fields["deadline"] = task["deadline"]
-#     user_id = 1
-#
-#     # await database.update_task(user_id, task_name, task_desc, deadline)
-#
-#     return web.json_response({
-#         "status": "ok",
-#     })
+@login_required
+@router.patch("/api/tasks/{task_id}")
+async def api_new_task(request: web.Request) -> web.Response:
+    user_id = request.user.id
+    task_id = request.match_info["task_id"]
+    task = await request.json()
+
+    await database.update_task(user_id, task_id,
+                               new_task_name=task['name'],
+                               new_desc=task['description'],
+                               new_deadline=task['deadline'])
+    return web.json_response({"message": "Task successfully updated!"},
+                             status=200)
 
 
 async def init_app() -> web.Application:
